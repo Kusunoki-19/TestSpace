@@ -1,97 +1,74 @@
-#include <SPI.h> //SPI通信の読み込み
-#define PIN_SPI_MOSI 11
-#define PIN_SPI_MISO 12
-#define PIN_SPI_SCK 13
-#define PIN_SPI_SS 10
-#define PIN_BUSY 9
-void setup() {
-  delay(1000);
-  Serial.begin(115200);
-  
-  //ステッピングモータ用のピンの準備
-  pinMode(PIN_SPI_MOSI, OUTPUT);
-  pinMode(PIN_SPI_MISO, INPUT);
-  pinMode(PIN_SPI_SCK, OUTPUT);
-  pinMode(PIN_SPI_SS, OUTPUT);
-  digitalWrite(PIN_SPI_SS, HIGH);
-  pinMode(PIN_BUSY, INPUT);
+#include <SPI.h>//ライブラリ読み込み
 
-   //SPI通信の開始宣言
-   SPI.begin();
-   SPI.setDataMode(SPI_MODE3); //SCKの立ち上がりでデータを送受信、アイドル時はpinをHIGHに設定
-   SPI.setBitOrder(MSBFIRST); //MSBから送信
-   //L6470の利用設定
-   L6470_setup();
+//ピン番号設定
+#define PIN_SDO 11
+#define PIN_SDI 12
+#define PIN_SCK 13
+#define PIN_PORTC 10
+
+//モーター回転速度設定
+long speed = 100000;
+
+void setup()//初期設定
+{
+  //ピンの入出力を決定
+  pinMode(PIN_SDO, OUTPUT);
+  pinMode(PIN_SDI, INPUT);
+  pinMode(PIN_SCK, OUTPUT);
+  pinMode(PIN_PORTC, OUTPUT);
+
+
+  delay(2000);//よくわからないけどちょっと待ってみる
+
+  digitalWrite(PIN_PORTC, HIGH); //ドライバを命令を受け付けない状態にする
+
+  //SPI通信の初期設定
+  SPI.begin();
+  SPI.setDataMode(SPI_MODE3);
+  SPI.setBitOrder(MSBFIRST);
+
 }
 
-//SPI通信するための関数
 
-void L6470_send(unsigned char value){
-  while(!digitalRead(PIN_BUSY)){}
-  //BUSYが解除されるまで待機
+void L6470_run(long speed) { //ドライバに命令を送るサブルーチン
+  unsigned short dir;
+  unsigned long spd;
+  unsigned char spd_h;
+  unsigned char spd_m;
+  unsigned char spd_l;
 
-  digitalWrite(PIN_SPI_SS, LOW);
-  SPI.transfer(0); //制御信号をSPI通信で送る
-  SPI.transfer(value); //制御信号をSPI通信で送る
-  digitalWrite(PIN_SPI_SS, HIGH);
+  //マイナス値を入力したら回転方向を 反転する
+  if (speed < 0) {
+    dir = 0x50;
+    spd = -1 * speed;
+  }
+  else {
+    dir = 0x51;
+    spd = speed;
+  }
+
+  //回転速度の設定をするための命令を作る
+  spd_h = (unsigned char)((0x0F0000 & spd) >> 16);
+  spd_m = (unsigned char)((0x000FF00 & spd) >> 8);
+  spd_l = (unsigned char)(0x000FF & spd);
+
+  //ドライバに命令を送る
+  L6470_write(dir);
+  L6470_write(spd_h);
+  L6470_write(spd_m);
+  L6470_write(spd_l);
 }
 
-//L6470のセットアップ
 
-void L6470_setup(){
-  //デバイス設定
-  L6470_send(0x00);
-  L6470_send(0x00);
-  L6470_send(0x00);
-  L6470_send(0x00);
-  L6470_send(0xc0);
-
-  //加速係数設定
-  L6470_send(0x05);
-  L6470_send(0x00);
-  L6470_send(0x41);
-  //減速係数設定
-  L6470_send(0x06); //レジスタアドレス
-  L6470_send(0x00);
-  L6470_send(0x41); //値(10bit)、デフォルト0x41
-  //最大回転速度設定
-  L6470_send(0x07);
-  L6470_send(0x00);
-  L6470_send(0x41);
-  //最低回転速度設定
-  L6470_send(0x08);
-  L6470_send(0x00);
-  L6470_send(0x01);
-  //モータ停止中の電圧設定
-  L6470_send(0x09); //レジスタアドレス
-  L6470_send(0x20); //値(8bit),デフォルト0x29
-  //フルステップ駆動
-  L6470_send(0x15);
-  L6470_send(0x00);
-  L6470_send(0x3ff); //値(10bit),デフォルト0x41
-
-  //モータ定速回転時の電圧設定
-  L6470_send(0x0A);
-  L6470_send(0x20); //値(8bit),デフォルト0x29
-  //加速中の電圧設定
-  L6470_send(0x0B);
-  L6470_send(0x20); //値(8bit),デフォルト0x29
-  //減速中の電圧設定
-  L6470_send(0x0C);
-  L6470_send(0x20); //値(8bit),デフォルト0x29
-  //フルステップ、ハーフステップ、1/4,1/8,・・・,1/128ステップの設定
-  L6470_send(0x16);
-  L6470_send(0x03); ////値(8bit)
+void L6470_write(unsigned char command) { // ドライバに命令を送るサブルーチン
+  digitalWrite(PIN_PORTC, LOW); //ドライバが命令を受け取れる状態にする
+  SPI.transfer(command); //命令を送る
+  digitalWrite(PIN_PORTC, HIGH); //ドライバが命令を受け取れない状態にする
 }
 
-//メイン処理-loop()
-void loop() {
-  //360°回転させる
-  L6470_send(0x51); //Run(DIR, SPD),0x51:正転,0x50:逆転
-  L6470_send(0x00);
-  L6470_send(0x20); //回転スピードの設定
-  L6470_send(0x00);
-delay(1604);
-  L6470_send(0xB8);
-  
+void loop() { //本文
+  L6470_run(speed);
+  delay(3000);
+
 }
+
