@@ -1,0 +1,6 @@
+D:\_Git\webFileServerTest\webFileServerTest\bin\Debug\webFileServerTest.exe.config
+D:\_Git\webFileServerTest\webFileServerTest\bin\Debug\webFileServerTest.exe
+D:\_Git\webFileServerTest\webFileServerTest\bin\Debug\webFileServerTest.pdb
+D:\_Git\webFileServerTest\webFileServerTest\obj\Debug\webFileServerTest.exe
+D:\_Git\webFileServerTest\webFileServerTest\obj\Debug\webFileServerTest.pdb
+D:\_Git\webFileServerTest\webFileServerTest\obj\Debug\webFileServerTest.csprojResolveAssemblyReference.cache

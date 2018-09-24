@@ -47,7 +47,7 @@ void setup()
   pinMode(PIN_SPI_SS, OUTPUT);
   pinMode(SW1, INPUT_PULLUP);
   Serial.begin(115200);
-  
+
   digitalWrite(PIN_SPI_SS, HIGH);
   //SPI通信開始
   SPI.begin();
@@ -63,71 +63,42 @@ void setup()
   L6470_send(0xc0);//ResetRevice
 
   L6470_setup();//L6470を設定
-/*
-  //連続運転
-  L6470_send(0x51);//Run(DIR,SPD),0x51:正転,0x50:逆転　
-  L6470_send(0x00);//SPD値(20bit)
-  L6470_send(0x40);
-  L6470_send(0x00);
-  delay(10000);
-  L6470_send(0xB0);//SoftStop
-  delay(1000);
-
-  L6470_send(0x50);//Run(DIR,SPD),0x51:正転,0x50:逆転　
-  L6470_send(0x00);//値(20bit)
-  L6470_send(0x40);
-  L6470_send(0x00);
-  delay(4000);
-  L6470_send(0xB0);//SoftStop
-  delay(5000);
-
-  L6470_send(0x50);//Run(DIR,SPD),0x51:正転,0x50:逆転　
-  L6470_send(0x01);//値(20bit)
-  L6470_send(0x00);
-  L6470_send(0x00);
-  delay(1000);
-  L6470_send(0xB0);//SoftStop
-  delay(5000);
-
-  L6470_send(0x50);//Run(DIR,SPD),0x51:正転,0x50:逆転　
-  L6470_send(0x01);//値(20bit)
-  L6470_send(0x00);
-  L6470_send(0x00);
-  delay(1000);
-  L6470_send(0xB8);//HradStop
-  delay(5000);
-
-  L6470_send(0x70);//GoHome
-  delay(8000);
-  */
 }
 
 void loop()
 {
-  static uint32_t ONE_ROTATE_STEP = 400; 
+  static uint32_t ONE_ROTATE_STEP = 400;
   static float angle_float = 0;
-  static uint32_t angle = 0; //2^21までカウントしたい（願望
-  
-  if(digitalRead(SW1) == ON) {
-    angle_float += 400/24;
-    angle = (uint32_t)(angle_float);
+  static uint32_t angle = 0; 
+  angle = 400;
+  if (digitalRead(SW1) == ON) {
+    //angle_float += 400 / 24;
+    //angle = (uint32_t)(angle_float);
     //angle = angle % ONE_ROTATE_STEP; //ONE_ROTATE_STEP からはみ出さないようにする
-    
+
     //angle += 400;
-    
-    Serial.print("angle :"); Serial.println(angle);
+
     uint8_t bits_8 = 0;
-    
-    L6470_send(0b01101001); //GoTo_DIR命令の進むほう
-    
+
+    //L6470_send(0b01101001); //GoTo_DIR命令 (DIR = 1 ->正回転)
+    //L6470_send(0b01100000); //GoTo命令
+    L6470_send(0b01000001); //Move命令 (DIR = 1 ->正回転)
+
     bits_8 = (uint8_t)(angle >> 16);
     L6470_send(bits_8); //上位8bit書き込み
-    
+
     bits_8 = (uint8_t)(angle >> 8);
     L6470_send(bits_8); //中  8bit書き込み
-    
+
     bits_8 = (uint8_t)(angle);
     L6470_send(bits_8); //下位8bit書き込み
-  delay(1000);
+    delay(1000);
+
+    Serial.print("angle_float :"); Serial.println(angle_float);
+    Serial.print("angle       :"); Serial.println(angle);
+    Serial.print("upper  8bit :"); Serial.println((uint8_t)(angle >> 16), BIN);
+    Serial.print("mediam 8bit :"); Serial.println((uint8_t)(angle >> 8), BIN);
+    Serial.print("downer 8bit :"); Serial.println((uint8_t)(angle), BIN);
+    Serial.print("\n");
   }
 }
